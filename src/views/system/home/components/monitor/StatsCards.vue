@@ -1,5 +1,5 @@
 <template>
-  <a-row :gutter="[12, 12]">
+  <a-row :gutter="[24, 24]">
     <a-col :xs="12" :sm="12" :md="6">
       <stats-card-item
         title="总请求"
