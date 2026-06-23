@@ -1,6 +1,6 @@
 <template>
-  <default-home-card icon="PieChartOutlined" title="延时分布">
-    <div class="chart-box">
+  <default-home-card icon="PieChartOutlined" title="请求结果分布">
+    <div class="chart-wrap">
       <div ref="chartRef" class="chart-main"></div>
     </div>
   </default-home-card>
@@ -31,28 +31,39 @@
     const success = s?.success ?? 0;
     const errors = s?.errors ?? 0;
 
+    if (success === 0 && errors === 0) {
+      chart.clear();
+      chart.setOption({
+        title: {
+          text: '暂无数据',
+          left: 'center',
+          top: 'center',
+          textStyle: { color: '#ccc', fontSize: 14, fontWeight: 400 },
+        },
+      });
+      return;
+    }
+
     chart.setOption({
       tooltip: {
         trigger: 'item',
-        formatter: '{b}: {c} ({d}%)',
+        formatter: '{b}<br/>数量: {c} ({d}%)',
       },
       series: [{
         type: 'pie',
-        radius: ['45%', '70%'],
+        radius: ['40%', '68%'],
         center: ['50%', '50%'],
         avoidLabelOverlap: false,
-        itemStyle: {
-          borderRadius: 6,
-          borderColor: '#fff',
-          borderWidth: 2,
-        },
+        itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
         label: {
           show: true,
           formatter: '{b}\n{d}%',
-          fontSize: 11,
+          fontSize: 12,
+          fontWeight: 500,
+          color: 'rgba(0,0,0,0.65)',
         },
         emphasis: {
-          label: { show: true, fontSize: 14, fontWeight: 'bold' },
+          label: { show: true, fontSize: 15, fontWeight: 'bold' },
         },
         data: [
           { value: success, name: '成功', itemStyle: { color: '#52c41a' } },
@@ -72,10 +83,9 @@
 </script>
 
 <style scoped lang="less">
-  .chart-box {
+  .chart-wrap {
     width: 100%;
-    display: flex;
-    justify-content: center;
+    padding: 8px 0;
     .chart-main {
       width: 100%;
       height: 220px;

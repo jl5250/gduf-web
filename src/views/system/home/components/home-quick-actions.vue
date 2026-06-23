@@ -1,17 +1,11 @@
-<!--
-  * 首页 核心操作入口
-  *
-  * @Author:    计算机学院学生会学习部
-  * @Date:      2026-04-26
--->
 <template>
   <default-home-card icon="ThunderboltOutlined" title="核心操作">
     <div class="quick-actions-grid">
-      <a-row>
+      <a-row :gutter="[16, 16]">
         <a-col v-for="(action, index) in quickActions" :key="index" :xs="12" :sm="12" :md="6">
           <div class="action-item" @click="navigateTo(action.path)">
-            <div class="action-icon">
-              <component :is="$antIcons[action.icon]" :style="{ fontSize: '30px' }" />
+            <div class="action-icon-wrap">
+              <component :is="$antIcons[action.icon]" class="action-icon" />
             </div>
             <span class="action-label">{{ action.label }}</span>
             <span class="action-desc">{{ action.desc }}</span>
@@ -25,12 +19,8 @@
 <script setup lang="ts">
   import { useRouter } from 'vue-router';
   import DefaultHomeCard from '/@/views/system/home/components/default-home-card.vue';
-  import { theme } from 'ant-design-vue';
 
   const router = useRouter();
-
-  const { useToken } = theme;
-  const { token } = useToken();
 
   interface QuickAction {
     label: string;
@@ -73,40 +63,45 @@
 
 <style scoped lang="less">
   .quick-actions-grid {
+    padding: 8px 0;
     .action-item {
-      padding: 10px 0;
+      padding: 20px 8px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      border-radius: 4px;
+      border-radius: 8px;
       text-align: center;
-      transition: background-color 0.3s;
-
+      transition: all 0.3s;
+      background: #fafafa;
       &:hover {
-        background-color: #f0ffff;
+        background: #f0f5ff;
+        transform: translateY(-2px);
       }
-
-      .action-icon {
-        color: v-bind('token.colorPrimary');
-        margin-bottom: 5px;
-        height: 36px;
+      .action-icon-wrap {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: #e6f7ff;
         display: flex;
         align-items: center;
         justify-content: center;
+        margin-bottom: 12px;
+        .action-icon {
+          font-size: 24px;
+          color: #1890ff;
+        }
       }
-
       .action-label {
-        font-size: 14px;
-        font-weight: 500;
+        font-size: 15px;
+        font-weight: 600;
         color: rgba(0, 0, 0, 0.85);
-        margin-top: 5px;
+        margin-bottom: 4px;
       }
-
       .action-desc {
         font-size: 12px;
-        color: #999;
+        color: rgba(0, 0, 0, 0.35);
       }
     }
   }

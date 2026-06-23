@@ -1,20 +1,18 @@
 <template>
   <default-home-card icon="OrderedListOutlined" title="最近任务">
     <div class="jobs-list">
-      <div v-if="!jobs.length" class="empty">暂无任务</div>
-      <div v-for="job in jobs" :key="job.uuid" class="job-item">
+      <div v-if="!jobs.length" class="jobs-empty">暂无导出任务</div>
+      <div v-for="job in jobs" :key="job.uuid" class="job-card">
         <div class="job-header">
           <span class="job-title">{{ job.major }}</span>
           <span class="job-name">{{ job.postName }}</span>
         </div>
-        <div class="job-progress">
-          <a-progress
-            :percent="job.progress"
-            :stroke-color="job.progress >= 100 ? '#52c41a' : '#1890ff'"
-            :size="'small'"
-            :format="() => job.progress >= 100 ? '完成' : job.progress + '%'"
-          />
-        </div>
+        <a-progress
+          :percent="job.progress"
+          :stroke-color="job.progress >= 100 ? '#52c41a' : '#1890ff'"
+          :stroke-width="8"
+          :format="() => job.progress >= 100 ? '已完成' : job.progress + '%'"
+        />
       </div>
     </div>
   </default-home-card>
@@ -31,24 +29,29 @@
 
 <style scoped lang="less">
   .jobs-list {
-    max-height: 280px;
-    overflow-y: auto;
-    .empty {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 60px;
+    .jobs-empty {
       text-align: center;
       color: rgba(0, 0, 0, 0.25);
-      padding: 24px 0;
+      padding: 32px 0;
       font-size: 13px;
     }
-    .job-item {
-      padding: 8px 0;
-      border-bottom: 1px solid #f5f5f5;
-      &:last-child { border-bottom: none; }
+    .job-card {
+      background: #fafafa;
+      border-radius: 8px;
+      padding: 12px 16px;
+      transition: background 0.2s;
+      &:hover { background: #f0f5ff; }
       .job-header {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 4px;
-        .job-title { font-size: 13px; font-weight: 500; }
-        .job-name { font-size: 12px; color: rgba(0, 0, 0, 0.45); }
+        align-items: center;
+        margin-bottom: 10px;
+        .job-title { font-size: 14px; font-weight: 500; color: rgba(0,0,0,0.85); }
+        .job-name { font-size: 12px; color: rgba(0, 0, 0, 0.4); }
       }
     }
   }

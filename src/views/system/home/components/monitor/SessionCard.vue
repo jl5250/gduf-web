@@ -5,13 +5,14 @@
         type="dashboard"
         :percent="sessionPercent"
         :stroke-color="sessionColor"
+        :width="140"
         :format="() => remainingText"
       />
       <div class="session-status">
-        <a-tag :color="tagColor">{{ tagText }}</a-tag>
+        <a-tag :color="tagColor" style="font-size: 13px; padding: 2px 12px;">{{ tagText }}</a-tag>
       </div>
       <div class="session-hint">
-        会话超时后将自动重新登录
+        超时后爬虫将自动重新登录
       </div>
     </div>
   </default-home-card>
@@ -27,8 +28,7 @@
     sessionColor: string;
   }>();
 
-  // Assume session max duration is 4 hours (14400s) for progress display
-  const MAX_SESSION = 14400;
+  const MAX_SESSION = 14400; // 4h 用于进度环展示
 
   const sessionPercent = computed(() => {
     if (props.remainingSeconds <= 0) return 0;
@@ -40,8 +40,8 @@
     const h = Math.floor(props.remainingSeconds / 3600);
     const m = Math.floor((props.remainingSeconds % 3600) / 60);
     const s = props.remainingSeconds % 60;
-    if (h > 0) return `${h}h${String(m).padStart(2, '0')}m`;
-    return `${m}m${String(s).padStart(2, '0')}s`;
+    if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+    return `${m}m ${String(s).padStart(2, '0')}s`;
   });
 
   const tagText = computed(() => {
@@ -69,14 +69,14 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 12px 0;
+    padding: 20px 0 12px;
+    gap: 16px;
     .session-status {
-      margin-top: 12px;
+      margin-top: 4px;
     }
     .session-hint {
-      margin-top: 8px;
       font-size: 12px;
-      color: rgba(0, 0, 0, 0.35);
+      color: rgba(0, 0, 0, 0.3);
     }
   }
 </style>
