@@ -44,6 +44,15 @@ export const homeRouters:Array<RouteRecordRaw> = [
           hideInMenu: false,
         },
       },
+      {
+        path: '/queue-monitor',
+        name: 'QueueMonitor',
+        component: () => import('/@/views/support/queue-monitor/index.vue'),
+        meta: {
+          title: '队列监控',
+          hideInMenu: true,
+        },
+      },
     ],
   },
 ];
