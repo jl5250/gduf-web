@@ -1,67 +1,75 @@
 <!--
-  * 首页
+  * 首页（监控面板版）
   *
-  * @Author:    1024创新实验室-主任：卓大
-  * @Date:      2022-09-12 22:34:00
-  * @Wechat:    zhuda1024
-  * @Email:     lab1024@163.com
-  * @Copyright  1024创新实验室 （ https://1024lab.net ），Since 2012
+  * @Author:    计算机学院学生会学习部
+  * @Date:      2026-06-23
   *
+  * 移除: 加班统计/销量统计/团队介绍/公众号等无关组件
+  * 新增: 爬虫监控面板（SSE 驱动）
 -->
 <template>
-  <!--  顶部欢迎区：系统标题 + 用户信息-->
+  <!--  顶部欢迎区 -->
   <a-row :gutter="[10, 10]">
     <a-col :span="24">
       <HomeHeader />
     </a-col>
   </a-row>
 
-  <!--  核心操作入口（重点前置）-->
+  <!--  核心操作入口 -->
   <a-row :gutter="[10, 10]">
     <a-col :span="24">
       <HomeQuickActions />
     </a-col>
   </a-row>
 
-  <!--  主内容区：左右布局 -->
+  <!--  今日概览统计 -->
   <a-row :gutter="[10, 10]">
-    <!--  左侧：数据图表 + 通知公告 -->
+    <a-col :span="24">
+      <StatsCards :data="data" :success-rate="successRate" :ocr-rate="ocrRate" />
+    </a-col>
+  </a-row>
+
+  <!--  主内容区 -->
+  <a-row :gutter="[10, 10]">
+    <!--  左侧：图表 + 日志 -->
     <a-col :xs="24" :lg="16">
       <a-row :gutter="[10, 10]">
-        <!--  通知公告 -->
+        <!--  爬虫健康度 -->
         <a-col :xs="24" :md="12">
-          <HomeNotice title="公告" :noticeTypeId="1" />
+          <HealthCard
+            :data="data"
+            :connected="connected"
+            :fp-text="fingerprintStatus.text"
+            :fp-color="fingerprintStatus.color"
+          />
         </a-col>
+        <!--  教务系统会话 -->
         <a-col :xs="24" :md="12">
-          <HomeNotice title="通知" :noticeTypeId="2" />
+          <SessionCard
+            :remaining-seconds="data?.system.sessionRemaining ?? 0"
+            :session-text="sessionFormatted.text"
+            :session-color="sessionFormatted.color"
+          />
         </a-col>
-        <!--  开发团队  -->
+        <!--  24h 请求趋势 -->
         <a-col :span="24">
-          <HomeSystemCard2 />
+          <RequestChart :data="data" />
         </a-col>
-        <!--  图表区域 -->
-        <a-col :xs="24" :md="12">
-          <Pie />
-        </a-col>
-        <a-col :xs="24" :md="12">
-          <Category />
-        </a-col>
+        <!--  运行日志 -->
         <a-col :span="24">
-          <Gradient />
+          <LogPanel :logs="data?.logs ?? []" />
         </a-col>
       </a-row>
     </a-col>
-    <!--  右侧：快捷入口 + 待办 + 更新日志 -->
+
+    <!--  右侧：延时分布 + 最近任务 + 更新日志 -->
     <a-col :xs="24" :lg="8">
       <a-row :gutter="[10, 10]">
         <a-col :span="24">
-          <HomeQuickEntry />
+          <LatencyChart :data="data" />
         </a-col>
         <a-col :span="24">
-          <ToBeDoneCard />
-        </a-col>
-        <a-col :span="24">
-          <HomeSystemCard />
+          <RecentJobs :jobs="data?.jobs.recent ?? []" />
         </a-col>
         <a-col :span="24">
           <ChangelogCard />
@@ -70,19 +78,36 @@
     </a-col>
   </a-row>
 </template>
+
 <script setup lang="ts">
+  import { onMounted } from 'vue';
   import HomeHeader from './home-header.vue';
   import HomeQuickActions from './components/home-quick-actions.vue';
-  import HomeQuickEntry from './components/quick-entry/home-quick-entry.vue';
-  import HomeSystemCard from './components/home-system-card.vue';
-  import HomeSystemCard2 from './components/home-system-card2.vue';
-  import HomeNotice from './home-notice.vue';
-  import ToBeDoneCard from './components/to-be-done-card/home-to-be-done.vue';
   import ChangelogCard from './components/changelog-card.vue';
-  import Category from './components/echarts/category.vue';
-  import Pie from './components/echarts/pie.vue';
-  import Gradient from './components/echarts/gradient.vue';
+  import StatsCards from './components/monitor/StatsCards.vue';
+  import HealthCard from './components/monitor/HealthCard.vue';
+  import SessionCard from './components/monitor/SessionCard.vue';
+  import RequestChart from './components/monitor/RequestChart.vue';
+  import LatencyChart from './components/monitor/LatencyChart.vue';
+  import RecentJobs from './components/monitor/RecentJobs.vue';
+  import LogPanel from './components/monitor/LogPanel.vue';
+  import { useDashboard } from './components/monitor/useDashboard';
+
+  const {
+    data,
+    connected,
+    successRate,
+    ocrRate,
+    sessionFormatted,
+    fingerprintStatus,
+    connect,
+  } = useDashboard();
+
+  onMounted(() => {
+    connect();
+  });
 </script>
-<style lang="less" scoped>
+
+<style lang="less">
   @import './index.less';
 </style>
