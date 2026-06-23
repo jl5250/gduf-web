@@ -14,6 +14,7 @@ export interface ScoreAddParam {
   majorId?: string;
   postName: string;
   file?: string;
+  courseAttributes?: string;
 }
 
 /** 分页查询参数 */
@@ -80,6 +81,16 @@ export const scoreApi = {
   listCourseAttributes: async () => {
     const res = await gradeAxios.get('/listCourseAttributes');
     return res.data;
+  },
+
+  /** 班级导出统计 */
+  exportStats: () => {
+    return getRequest('/score/exportStats');
+  },
+
+  /** 课程属性使用分布 */
+  attributeStats: () => {
+    return getRequest('/score/attributeStats');
   },
 
   /**

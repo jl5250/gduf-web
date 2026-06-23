@@ -53,6 +53,15 @@ export const homeRouters:Array<RouteRecordRaw> = [
           hideInMenu: true,
         },
       },
+      {
+        path: '/score-stats',
+        name: 'ScoreStats',
+        component: () => import('/@/views/support/score-stats/index.vue'),
+        meta: {
+          title: '导出统计',
+          hideInMenu: true,
+        },
+      },
     ],
   },
 ];
