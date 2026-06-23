@@ -315,6 +315,7 @@
         majorId,
         postName: postNameStr,
         file: `${form.majorName}.xls`,
+        courseAttributes: form.courseAttributes?.join(','),
       });
 
       message.success('导出成功');
@@ -435,7 +436,13 @@
 
       const postNameStr = form.postName.join(', ');
       await Promise.all(selectedMajors.map(([majorId, majorName]) =>
-        scoreApi.add({ majorName, majorId, postName: postNameStr, file: `${majorName}.xls` })
+        scoreApi.add({
+          majorName,
+          majorId,
+          postName: postNameStr,
+          file: `${majorName}.xls`,
+          courseAttributes: form.courseAttributes?.join(','),
+        })
       ));
 
       progressPercent.value = 100;
