@@ -17,17 +17,33 @@
   >
     <!-- ====== 步骤1：表单填写 ====== -->
     <div v-if="step === 'form'">
-      <a-form ref="formRef" :model="form" :rules="rules" :label-col="{ span: 6 }">
-        <!-- 学年学期：懒加载 -->
+      <!-- 下拉数据预加载中：数据就绪后自动切到表单，无需二次打开 -->
+      <div v-if="dataLoading" class="score-export-dropdown-loading">
+        <a-spin size="large" tip="下拉数据加载中，请稍候..." />
+      </div>
+
+      <!-- 下拉数据加载失败：给出重试入口 -->
+      <a-alert
+        v-else-if="loadError"
+        type="error"
+        show-icon
+        message="下拉数据加载失败"
+        description="学年学期 / 班级 / 课程属性 数据未能加载，请确认外部服务可用后重试。"
+      >
+        <template #action>
+          <a-button size="small" type="primary" @click="ensureDropdownData">重新加载</a-button>
+        </template>
+      </a-alert>
+
+      <!-- 数据已就绪再渲染表单，此时各下拉框自带数据 -->
+      <a-form v-else ref="formRef" :model="form" :rules="rules" :label-col="{ span: 6 }">
         <a-form-item label="学年学期" name="postName">
           <a-select
             style="width: 100%"
             mode="multiple"
             v-model:value="form.postName"
             :options="semesterData.data.value || []"
-            :loading="semesterData.loading.value"
             placeholder="请选择学年学期（可多选）"
-            @dropdownVisibleChange="(open: boolean) => open && semesterData.load()"
           />
         </a-form-item>
 
@@ -39,12 +55,10 @@
             style="width: 100%"
             v-model:value="form.majorName"
             :options="singleMajorData.data.value || []"
-            :loading="singleMajorData.loading.value"
             placeholder="请选择班级"
             show-search
             :filter-option="filterMajorOption"
             allowClear
-            @dropdownVisibleChange="(open: boolean) => open && singleMajorData.load()"
           />
           <!-- 多班级 -->
           <a-tree-select
@@ -52,24 +66,21 @@
             style="width: 100%"
             v-model:value="form.major"
             :tree-data="majorTreeData"
-            :loading="multiMajorData.loading.value"
             multiple
             tree-checkable
             placeholder="请选择班级（按年级→专业→班级）"
             allow-clear
             :max-tag-count="6"
-            @dropdownVisibleChange="(open: boolean) => open && multiMajorData.load()"
           />
         </a-form-item>
 
-        <!-- 课程属性：打开弹窗时加载 -->
+        <!-- 课程属性：随弹窗一起预加载 -->
         <a-form-item label="课程属性">
           <a-select
             style="width: 100%"
             mode="multiple"
             v-model:value="form.courseAttributes"
             :options="attrData.data.value || []"
-            :loading="attrData.loading.value"
             placeholder="默认排除通识选修（可多选）"
             allowClear
           />
@@ -97,7 +108,7 @@
         <a-button @click="onClose">
           {{ step === 'progress' && progressPercent < 100 ? '后台运行' : '取消' }}
         </a-button>
-        <a-button v-if="step === 'form'" type="primary" @click="onSubmit" :loading="submitting">
+        <a-button v-if="step === 'form'" type="primary" @click="onSubmit" :loading="submitting" :disabled="dataLoading || loadError">
           {{ isMulti ? '开始导出' : '导出' }}
         </a-button>
         <a-button v-if="step === 'progress' && progressError" type="primary" @click="retrySubmit">
@@ -224,6 +235,61 @@
   const progressMessage = ref('');
   const progressError = ref('');
 
+  // ==================== 下拉数据预加载 ====================
+
+  const dataLoading = ref(false);
+  const loadError = ref(false);
+  let dropdownLoadPromise: Promise<boolean> | null = null;
+
+  /** 当前模式所需的全部下拉数据是否已就绪 */
+  function datasetsReady(): boolean {
+    const semesters = (semesterData.data.value || []) as any[];
+    const attrs = (attrData.data.value || []) as any[];
+    const majors = isMulti.value
+      ? ((multiMajorData.data.value || []) as any[])
+      : ((singleMajorData.data.value || []) as any[]);
+    return semesters.length > 0 && attrs.length > 0 && majors.length > 0;
+  }
+
+  /**
+   * 预加载本次模式所需的全部下拉数据（命中缓存则立即返回）。
+   * 数据未就绪前置 dataLoading=true 显示加载动画；并发调用共享同一个请求。
+   */
+  function ensureDropdownData(): Promise<boolean> {
+    if (datasetsReady()) {
+      loadError.value = false;
+      return Promise.resolve(true);
+    }
+    loadError.value = false;
+    if (dropdownLoadPromise) return dropdownLoadPromise;
+
+    dataLoading.value = true;
+    dropdownLoadPromise = Promise.all([
+      semesterData.load(),
+      attrData.load(),
+      isMulti.value ? multiMajorData.load() : singleMajorData.load(),
+    ])
+      .then(() => {
+        loadError.value = !datasetsReady();
+        return !loadError.value;
+      })
+      .finally(() => {
+        dataLoading.value = false;
+        dropdownLoadPromise = null;
+      });
+    return dropdownLoadPromise;
+  }
+
+  /** 数据就绪后，默认勾选“除通识选修外的全部课程属性” */
+  function applyAttrDefaults() {
+    const attrs = (attrData.data.value || []) as any[];
+    if (form.courseAttributes.length === 0 && attrs.length > 0) {
+      form.courseAttributes = attrs
+        .filter((a) => a.label !== '通识选修')
+        .map((a) => a.value);
+    }
+  }
+
   interface FormState {
     postName: string[];
     majorName: string | undefined;
@@ -248,7 +314,7 @@
 
   // ==================== 生命周期 ====================
 
-  function show() {
+  async function show() {
     Object.assign(form, formDefault);
     step.value = 'form';
     progressPercent.value = 0;
@@ -258,18 +324,12 @@
     visibleFlag.value = true;
     submitting.value = false;
 
-    // 课程属性在打开弹窗时加载
-    attrData.load();
-
-    // 设置课程属性默认值（排除通识选修）
-    nextTick(() => {
-      if (form.courseAttributes.length === 0 && attrData.data.value) {
-        form.courseAttributes = attrData.data.value
-          .filter((a) => a.label !== '通识选修')
-          .map((a) => a.value);
-      }
-      formRef.value?.clearValidate();
-    });
+    // 预加载学年学期 / 班级 / 课程属性：
+    // 首次打开先显示加载动画，数据全部就绪后才渲染表单并应用默认值，避免二次打开才有数据
+    await ensureDropdownData();
+    applyAttrDefaults();
+    await nextTick();
+    formRef.value?.clearValidate();
   }
 
   function onClose() {
@@ -543,3 +603,10 @@
 
   defineExpose({ show });
 </script>
+
+<style scoped>
+  .score-export-dropdown-loading {
+    padding: 48px 0;
+    text-align: center;
+  }
+</style>

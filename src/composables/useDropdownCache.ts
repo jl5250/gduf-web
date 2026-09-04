@@ -55,10 +55,12 @@ export function useDropdownCache<T>(cacheKey: string, fetcher: () => Promise<T>)
   const data = ref<T | null>(null) as any;
   const loading = ref(false);
   let loaded = false;
+  // 记录进行中的请求：并发 load() 共享同一个 Promise，避免重复请求、也避免提前返回
+  let inflight: Promise<void> | null = null;
 
   async function load(force = false) {
     if (loaded && !force) return;
-    if (loading.value) return;
+    if (inflight) return inflight;
 
     // 1. 先查缓存
     const cached = readCache<T>(cacheKey);
@@ -70,16 +72,20 @@ export function useDropdownCache<T>(cacheKey: string, fetcher: () => Promise<T>)
 
     // 2. 缓存没有，请求接口（显示 loading）
     loading.value = true;
-    try {
-      const result = await fetcher();
-      data.value = result;
-      writeCache(cacheKey, result);
-      loaded = true;
-    } catch (err) {
-      console.error(`[useDropdownCache] ${cacheKey} 加载失败:`, err);
-    } finally {
-      loading.value = false;
-    }
+    inflight = (async () => {
+      try {
+        const result = await fetcher();
+        data.value = result;
+        writeCache(cacheKey, result);
+        loaded = true;
+      } catch (err) {
+        console.error(`[useDropdownCache] ${cacheKey} 加载失败:`, err);
+      } finally {
+        loading.value = false;
+        inflight = null;
+      }
+    })();
+    return inflight;
   }
 
   function invalidate() {

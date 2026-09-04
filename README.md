@@ -109,9 +109,7 @@ gduf-web/
 │       │       ├── major-list.vue        # 班级列表页面
 │       │       ├── major-form.vue        # 班级表单
 │       │       ├── score-list.vue        # 成绩记录页面
-│       │       ├── score-form.vue        # 成绩表单
-│       │       ├── score-batch-form.vue  # 批量成绩表单
-│       │       └── score-export-modal.vue # 成绩导出弹窗
+│       │       └── score-export-modal.vue # 成绩导出弹窗（单/多班级共用）
 │       ├── system/                  # 系统管理页面
 │       │   ├── home/                # 首页仪表盘
 │       │   ├── login/               # 登录页
@@ -197,12 +195,10 @@ npm run build:prod
 | 页面 | 路由 | 说明 |
 |------|------|------|
 | 班级列表 | `/grade/major-list` | 查看所有班级，按年级排序 |
-| 成绩列表 | `/grade/score-list` | 分页查看成绩数据 |
+| 成绩列表 | `/grade/score-list` | 分页查看成绩数据，含单/多班级导出 |
 | 成绩导出 | `/grade/grade-export` | 批量导出成绩 Excel，支持进度追踪 |
 | GPA 计算 | `/grade/grade-gpa` | 上传成绩 Excel 计算 GPA |
 | 班级表单 | `/grade/major-form` | 新增/编辑班级信息 |
-| 成绩表单 | `/grade/score-form` | 新增/编辑成绩记录 |
-| 批量成绩 | `/grade/score-batch-form` | 批量录入成绩 |
 
 ### 导出功能特点
 
