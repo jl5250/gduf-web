@@ -358,10 +358,11 @@
       const majorId = selected?.majorId || '';
       const postNameStr = form.postName.join(', ');
 
+      // postName 传数组（可多选多个学年学期），由后端按 xnxq=a&xnxq=b 逐学期提交
       const extRes: any = await scoreApi.submitExcel({
         majorName: form.majorName!,
         majorId,
-        postName: postNameStr,
+        postName: form.postName,
         courseAttributes: form.courseAttributes,
       });
 
@@ -419,7 +420,7 @@
 
     try {
       await scoreApi.submitMultiExcel(currentUuid, {
-        postName: form.postName.join(', '),
+        postName: form.postName, // 数组，可多选多个学年学期
         major: selectedMajors,
         courseAttributes: form.courseAttributes,
       });
@@ -534,7 +535,7 @@
     const selectedMajors = parseSelectedMajors();
     try {
       await scoreApi.submitMultiExcel(currentUuid, {
-        postName: form.postName.join(', '),
+        postName: form.postName, // 数组，可多选多个学年学期
         major: selectedMajors,
         courseAttributes: form.courseAttributes,
       });

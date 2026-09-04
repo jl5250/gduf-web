@@ -95,8 +95,9 @@ export const scoreApi = {
 
   /**
    * 提交导出到外部系统（单个班级）
+   * @param params postName 为学年学期数组（支持多选）
    */
-  submitExcel: async (params: { majorName: string; majorId: string; postName: string; courseAttributes?: string[] }) => {
+  submitExcel: async (params: { majorName: string; majorId: string; postName: string[]; courseAttributes?: string[] }) => {
     const res = await gradeAxios.post('/getExcel', params);
     return res.data;
   },
@@ -104,9 +105,9 @@ export const scoreApi = {
   /**
    * 提交多班级导出到外部系统（异步，带进度）
    * @param uuid 前端生成的 UUID
-   * @param params postName + major [[majorId, majorName], ...] + courseAttributes
+   * @param params postName 为学年学期数组（支持多选）+ major [[majorId, majorName], ...] + courseAttributes
    */
-  submitMultiExcel: async (uuid: string, params: { postName: string; major: [string, string][]; courseAttributes?: string[] }) => {
+  submitMultiExcel: async (uuid: string, params: { postName: string[]; major: [string, string][]; courseAttributes?: string[] }) => {
     const res = await gradeAxios.post(`/getExcel1/${uuid}`, params);
     return res.data;
   },
