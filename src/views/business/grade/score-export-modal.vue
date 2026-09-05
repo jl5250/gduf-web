@@ -121,7 +121,7 @@
 
 <script setup lang="ts">
   import type { FormInstance } from 'ant-design-vue';
-  import { reactive, ref, computed, nextTick } from 'vue';
+  import { reactive, ref, computed, nextTick, onUnmounted } from 'vue';
   import { message } from 'ant-design-vue';
   import { SmartLoading } from '/@/components/framework/smart-loading';
   import { scoreApi } from '/@/api/business/grade/score-api';
@@ -167,9 +167,6 @@
     const res = await scoreApi.listAllWithGrade();
     return (res as any)?.data || [];
   });
-
-  // 根据模式选择对应的数据
-  const majorData = computed(() => isMulti.value ? multiMajorData : singleMajorData);
 
   const attrData = useDropdownCache<{ label: string; value: string }[]>('courseAttributes', async () => {
     const res: any = await scoreApi.listCourseAttributes();
@@ -382,8 +379,10 @@
       message.success('导出成功');
       emits('reloadList');
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       smartSentry.captureError(err);
+      const msg = err?.response?.data?.msg || err?.message || '请稍后重试';
+      message.error(`导出失败：${msg}`);
     } finally {
       SmartLoading.hide();
       submitting.value = false;
@@ -395,6 +394,19 @@
   let pollTimer: ReturnType<typeof setInterval> | null = null;
   let resultTimer: ReturnType<typeof setInterval> | null = null;
   let currentUuid = '';
+
+  // 轮询保护：连续失败 / 超过总时长后停止轮询，避免后端异常时无限请求
+  const MAX_POLL_FAILURES = 10; // 连续失败 10 次（约 20 秒）
+  const MAX_POLL_DURATION_MS = 10 * 60 * 1000; // 最长轮询 10 分钟
+  let pollFailCount = 0;
+  let pollStartAt = 0;
+
+  /** 停止轮询并把界面切换到可重试的异常态 */
+  function stopPollingWithError(errorMsg: string) {
+    clearPolling();
+    progressError.value = errorMsg;
+    progressStatus.value = 'exception';
+  }
 
   function parseSelectedMajors(): [string, string][] {
     return (form.major || [])
@@ -436,9 +448,16 @@
   }
 
   function startPolling() {
+    pollFailCount = 0;
+    pollStartAt = Date.now();
     pollTimer = setInterval(async () => {
+      if (Date.now() - pollStartAt > MAX_POLL_DURATION_MS) {
+        stopPollingWithError('导出超时，请稍后重试');
+        return;
+      }
       try {
         const res: any = await scoreApi.getProgress(currentUuid);
+        pollFailCount = 0;
         const pct = parseInt(String(res?.data ?? '0'), 10);
         progressPercent.value = isNaN(pct) ? 0 : pct;
         emits('progressChange', progressPercent.value);
@@ -450,16 +469,26 @@
           startResultPolling();
         }
       } catch (err) {
+        pollFailCount += 1;
         smartSentry.captureError(err);
+        if (pollFailCount >= MAX_POLL_FAILURES) {
+          stopPollingWithError('进度查询持续失败，已停止轮询，请重试');
+        }
       }
     }, 2000);
   }
 
   function startResultPolling() {
     if (resultTimer) return;
+    pollFailCount = 0;
     resultTimer = setInterval(async () => {
+      if (Date.now() - pollStartAt > MAX_POLL_DURATION_MS) {
+        stopPollingWithError('获取导出结果超时，请重试');
+        return;
+      }
       try {
         const resultRes: any = await scoreApi.getResult(currentUuid);
+        pollFailCount = 0;
         const { code, msg, data } = resultRes || {};
         if (code === 202 || !data) return;
 
@@ -467,7 +496,11 @@
         resultTimer = null;
         await handleMultiResult(code, msg, data);
       } catch (err) {
+        pollFailCount += 1;
         smartSentry.captureError(err);
+        if (pollFailCount >= MAX_POLL_FAILURES) {
+          stopPollingWithError('结果查询持续失败，已停止轮询，请重试');
+        }
       }
     }, 2000);
   }
@@ -482,7 +515,7 @@
       const zip = new JSZip();
       base64List.forEach((base64Str, index) => {
         if (!base64Str) return;
-        const [mId, mName] = selectedMajors[index] || [`class_${index}`, `班级${index + 1}`];
+        const [, mName] = selectedMajors[index] || [`class_${index}`, `班级${index + 1}`];
         const bytes = base64ToUint8Array(base64Str);
         if (bytes.length > 0) zip.file(`${mName}.xls`, bytes);
       });
@@ -496,7 +529,8 @@
       URL.revokeObjectURL(url);
 
       const postNameStr = form.postName.join(', ');
-      await Promise.all(selectedMajors.map(([majorId, majorName]) =>
+      // 记录保存失败不应把已成功的导出标为失败（文件已下载），逐条尽力写入即可
+      const saveResults = await Promise.allSettled(selectedMajors.map(([majorId, majorName]) =>
         scoreApi.add({
           majorName,
           majorId,
@@ -505,6 +539,10 @@
           courseAttributes: form.courseAttributes?.join(','),
         })
       ));
+      const saveFailed = saveResults.filter((r) => r.status === 'rejected').length;
+      if (saveFailed > 0) {
+        message.warning(`${saveFailed} 条导出记录保存失败，不影响已下载文件`);
+      }
 
       progressPercent.value = 100;
       progressStatus.value = 'success';
@@ -547,6 +585,11 @@
   }
 
   // ==================== 通用工具 ====================
+
+  // 组件卸载时清掉轮询定时器，避免离开页面后仍每 2 秒请求后端
+  onUnmounted(() => {
+    clearPolling();
+  });
 
   function clearPolling() {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
@@ -602,7 +645,17 @@
     }
   }
 
-  defineExpose({ show });
+  /**
+   * 后台运行后重新打开弹窗查看进度（供列表页“查看详情”调用）。
+   * 后台运行期间轮询并未中断（onClose 走 backgroundRun 分支），重新显示即可；
+   * 若轮询已因异常停止，界面处于 exception 态并带有“重试”按钮。
+   */
+  function showProgress() {
+    if (!currentUuid) return;
+    visibleFlag.value = true;
+  }
+
+  defineExpose({ show, showProgress });
 </script>
 
 <style scoped>

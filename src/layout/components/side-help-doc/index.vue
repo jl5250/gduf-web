@@ -56,7 +56,7 @@
   </div>
 </template>
 <script setup lang="ts">
-  import { onMounted, ref, watch, reactive } from 'vue';
+  import { onMounted, onUnmounted, ref, watch, reactive } from 'vue';
   import { useRoute } from 'vue-router';
   import _ from 'lodash';
   import { helpDocApi } from '/@/api/support/help-doc-api';
@@ -83,7 +83,7 @@
     scheduleShowFeedback();
   });
 
-  let scheduleShowInterval = null;
+  let scheduleShowInterval: ReturnType<typeof setInterval> | null = null;
   let scheduleShowIndex = 0;
 
   function scheduleShowFeedback() {
@@ -106,6 +106,14 @@
       }
     }, 3000);
   }
+
+  // 布局组件隐藏/卸载时停止轮播定时器，避免空转
+  onUnmounted(() => {
+    if (scheduleShowInterval != null) {
+      clearInterval(scheduleShowInterval);
+      scheduleShowInterval = null;
+    }
+  });
 
   // 总页数
   let pages = 1;

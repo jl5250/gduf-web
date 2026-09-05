@@ -60,18 +60,17 @@ export default ({ mode }) => {
       },
     },
     plugins: [vue()],
+    // esbuild 压缩 + 丢弃 console/debugger，构建速度显著快于 terser
+    esbuild: {
+      drop: ['console', 'debugger'],
+    },
     optimizeDeps: {
       include: ['ant-design-vue/es/locale/zh_CN', 'dayjs/locale/zh-cn', 'ant-design-vue/es/locale/en_US'],
       exclude: ['vue-demi'],
     },
     build: {
-      // 清除console和debugger
-      terserOptions: {
-        compress: {
-          drop_console: true,
-          drop_debugger: true,
-        },
-      },
+      // 跳过构建结束时的 gzip 体积计算，加快构建
+      reportCompressedSize: false,
       rollupOptions: {
         output: {
           //配置这个是让不同类型文件放在不同文件夹，不会显得太乱
@@ -79,19 +78,29 @@ export default ({ mode }) => {
           entryFileNames: 'js/[name]-[hash].js',
           assetFileNames: '[ext]/[name]-[hash].[ext]',
           manualChunks(id) {
-            //静态资源分拆打包
+            // 大型依赖单独分包（利用浏览器长期缓存）；
+            // 其余依赖返回 undefined 交给 Rollup 按引用关系自动分包，跟随页面懒加载，
+            // 避免此前“每个 npm 包一个 chunk”导致首屏几十上百个请求
             if (id.includes('node_modules')) {
-              return id.toString().split('node_modules/')[1].split('/')[0].toString();
+              if (id.includes('ant-design-vue') || id.includes('@ant-design')) {
+                return 'antd-vendor';
+              }
+              if (id.includes('echarts') || id.includes('zrender')) {
+                return 'echarts';
+              }
+              if (id.includes('@wangeditor-next')) {
+                return 'wangeditor';
+              }
+              return undefined;
             }
           },
         },
       },
       target: 'esnext',
-      outDir: 'dist', // 指定输出路径
+      outDir: 'dist', // 指定输出目录
       assetsDir: 'assets', // 指定生成静态文件目录
       assetsInlineLimit: '4096', // 小于此阈值的导入或引用资源将内联为 base64 编码
-      chunkSizeWarningLimit: 500, // chunk 大小警告的限制
-      minify: 'terser', // 混淆器，terser构建后文件体积更小
+      chunkSizeWarningLimit: 1500, // chunk 大小警告的限制
       emptyOutDir: true, //打包前先清空原有打包文件
     },
     css: {
@@ -104,7 +113,6 @@ export default ({ mode }) => {
     },
     define: {
       __INTLIFY_PROD_DEVTOOLS__: false,
-      'process.env': process.env,
     },
   };
 };

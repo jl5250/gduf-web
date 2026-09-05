@@ -71,7 +71,8 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, onMounted, watch, nextTick, computed } from 'vue';
+  import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue';
+  import { message } from 'ant-design-vue';
   import { scoreApi } from '/@/api/business/grade/score-api';
   import * as echarts from 'echarts';
 
@@ -120,7 +121,9 @@
       if (res.data?.code === 200) {
         exportStats.value = res.data.data || [];
       }
-    } catch { /* ignore */ }
+    } catch {
+      message.error('导出统计加载失败，请稍后重试');
+    }
     finally { loadingExport.value = false; }
   }
 
@@ -132,7 +135,9 @@
         attrStats.value = res.data.data || [];
         updatePieChart();
       }
-    } catch { /* ignore */ }
+    } catch {
+      message.error('课程属性统计加载失败，请稍后重试');
+    }
     finally { loadingAttr.value = false; }
   }
 
@@ -180,7 +185,21 @@
 
   onMounted(() => {
     fetchExportStats();
+    window.addEventListener('resize', handleResize);
   });
+
+  // 离开页面前释放 echarts 实例与 resize 监听，避免反复进出导致内存泄漏
+  onUnmounted(() => {
+    window.removeEventListener('resize', handleResize);
+    if (pieChart) {
+      pieChart.dispose();
+      pieChart = null;
+    }
+  });
+
+  function handleResize() {
+    pieChart?.resize();
+  }
 </script>
 
 <style scoped lang="less">
