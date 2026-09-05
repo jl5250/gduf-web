@@ -148,7 +148,6 @@
       }
 
       const data = res.data;
-      console.log('res.data', data);
       if (!Array.isArray(data) || data.length < 2) {
         message.error('返回数据格式异常');
         return;
@@ -282,7 +281,6 @@
       const zip = new JSZip();
 
       // 成绩单：data[0] 中每个元素就是 base64 字符串
-      console.log('[下载] filesOutList:', filesOutList.value.length, '个');
       filesOutList.value.forEach((item: any, idx: number) => {
         if (typeof item === 'string' && item.length > 0) {
           // 取对应上传文件的原始文件名
@@ -294,7 +292,6 @@
       });
 
       // 排名表：data[1] 中每个元素就是 base64 字符串（determine=true 时）
-      console.log('[下载] ranksOutList:', ranksOutList.value.length, '个');
       ranksOutList.value.forEach((item: any, idx: number) => {
         if (typeof item === 'string' && item.length > 0) {
           const srcFile = fileList.value[idx];

@@ -45,6 +45,7 @@
       bordered
       :loading="tableLoading"
       :pagination="false"
+      :scroll="{ x: 890 }"
       :row-selection="{ selectedRowKeys: selectedRowKeyList, onChange: onSelectChange }"
     >
       <template #bodyCell="{ column, record }">
@@ -72,7 +73,7 @@
       />
     </div>
 
-    <MajorFormModal ref="formRef" @reloadList="queryData" />
+    <MajorFormModal ref="formRef" @reloadList="onDataChanged" />
   </a-card>
 </template>
 <script setup lang="ts">
@@ -83,7 +84,15 @@
   import { majorApi } from '/@/api/business/grade/major-api';
   import { PAGE_SIZE_OPTIONS } from '/@/constants/common-const';
   import { smartSentry } from '/@/lib/smart-sentry';
+  import { invalidateDropdownCache } from '/@/composables/useDropdownCache';
   import MajorFormModal from './major-form.vue';
+
+  // ---------------------------- 数据变更 ----------------------------
+  // 班级新增/编辑/删除后，失效导出弹窗使用的班级下拉缓存（否则最长 30 分钟选到旧数据）
+  function onDataChanged() {
+    invalidateDropdownCache('majors_single', 'majors_multi');
+    queryData();
+  }
 
   // ---------------------------- 表格列 ----------------------------
   const columns = [
@@ -164,6 +173,7 @@
       await majorApi.batchDelete(selectedRowKeyList.value);
       message.success('批量删除成功');
       selectedRowKeyList.value = [];
+      invalidateDropdownCache('majors_single', 'majors_multi');
       await queryData();
     } catch (e) {
       smartSentry.captureError(e);
@@ -190,6 +200,7 @@
     try {
       await majorApi.delete(data.id);
       message.success('删除成功');
+      invalidateDropdownCache('majors_single', 'majors_multi');
       await queryData();
     } catch (e) {
       smartSentry.captureError(e);

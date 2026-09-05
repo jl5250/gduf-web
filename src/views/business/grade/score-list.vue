@@ -71,6 +71,7 @@
       bordered
       :loading="tableLoading"
       :pagination="false"
+      :scroll="{ x: 1020 }"
       :row-selection="{ selectedRowKeys: selectedRowKeyList, onChange: onSelectChange }"
     >
       <template #bodyCell="{ column, record }">
