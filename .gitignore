@@ -5,3 +5,10 @@ dist
 dist-ssr
 *.local
 .idea
+
+# ---- Env 文件：可含密钥（如 VITE_APP_DASHBOARD_TOKEN），一律不入库 ----
+# 使用方式：复制模板 `cp .env.example .env.development` 再填入实际值
+# 模板 `.env.example` 本身入库，唯一例外
+.env
+.env.*
+!.env.example
