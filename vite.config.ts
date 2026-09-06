@@ -9,15 +9,13 @@
  */
 import { resolve } from 'path';
 import vue from '@vitejs/plugin-vue';
-import { loadEnv } from 'vite';
 import customVariables from '/@/theme/custom-variables.js';
 
 const pathResolve = (dir) => {
   return resolve(__dirname, '.', dir);
 };
 
-export default ({ mode }) => {
-  const env = loadEnv(mode, process.cwd());
+export default () => {
   return {
     base: process.env.NODE_ENV === 'production' ? '/' : '/',
     root: process.cwd(),
@@ -42,22 +40,6 @@ export default ({ mode }) => {
     server: {
       host: '0.0.0.0',
       port: 8081,
-      server: {
-        proxy: {
-          // 代理路径
-          [env.VITE_APP_API_URL]: {
-            target: 'http://localhost:1024', // 目标服务器地址
-            changeOrigin: true, // 是否修改请求头中的 Origin 字段
-            rewrite: (path) => path.replace(/^\/smart-admin-api/, ''), // 重写路径
-          },
-          // 代理成绩成绩服务（后端二）
-          [env.VITE_APP_GRADE_API_URL]: {
-            target: 'http://localhost:5000',
-            changeOrigin: true,
-            rewrite: (path) => path.replace(/^\/grade-service/, ''),
-          },
-        },
-      },
     },
     plugins: [vue()],
     // esbuild 压缩 + 丢弃 console/debugger，构建速度显著快于 terser
