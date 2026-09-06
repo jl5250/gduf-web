@@ -63,7 +63,8 @@ export function useDashboard() {
   function connect() {
     if (es) return;
     const baseURL = import.meta.env.VITE_APP_GRADE_API_URL || '/grade-service';
-    const url = `${baseURL}/dashboard/stream`;
+    const token = import.meta.env.VITE_APP_DASHBOARD_TOKEN || '';
+    const url = token ? `${baseURL}/dashboard/stream?token=${token}` : `${baseURL}/dashboard/stream`;
 
     es = new EventSource(url);
 
