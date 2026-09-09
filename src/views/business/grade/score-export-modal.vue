@@ -490,7 +490,15 @@
         const resultRes: any = await scoreApi.getResult(currentUuid);
         pollFailCount = 0;
         const { code, msg, data } = resultRes || {};
-        if (code === 202 || !data) return;
+        if (code === 202) return;
+
+        // 后端已判定失败：立即停止轮询并报错，不要干等到超时
+        if (code >= 400) {
+          stopPollingWithError(msg || '导出失败');
+          return;
+        }
+
+        if (!data) return;
 
         clearInterval(resultTimer!);
         resultTimer = null;
@@ -512,13 +520,23 @@
       const selectedMajors = parseSelectedMajors();
       const base64List: string[] = Array.isArray(data) ? data : [];
 
+      if (base64List.length === 0)
+        throw new Error(msg || '导出结果为空，没有获取到任何班级数据');
+
       const zip = new JSZip();
+      let added = 0;
       base64List.forEach((base64Str, index) => {
         if (!base64Str) return;
         const [, mName] = selectedMajors[index] || [`class_${index}`, `班级${index + 1}`];
         const bytes = base64ToUint8Array(base64Str);
-        if (bytes.length > 0) zip.file(`${mName}.xls`, bytes);
+        if (bytes.length > 0) {
+          zip.file(`${mName}.xls`, bytes);
+          added++;
+        }
       });
+
+      // 所有班级都没解出有效内容时，不要生成空 zip
+      if (added === 0) throw new Error('所有班级的数据均为空，导出已取消');
 
       const blob = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(blob);

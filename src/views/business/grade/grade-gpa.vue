@@ -142,7 +142,8 @@
 
       const res = await gradeApi.getGPA(fileList.value as File[], determine.value);
 
-      if (res.code !== 200) {
+      // 207 = 部分文件失败：保留成功结果，同时明确提示哪些文件失败
+      if (res.code !== 200 && res.code !== 207) {
         message.error(res.msg || '计算失败');
         return;
       }
@@ -153,9 +154,29 @@
         return;
       }
 
+      // 后端已保证至少有一个成功，这里再兜一层：全是 null 就不往下走
+      const okCount = Array.isArray(data[0])
+        ? data[0].filter((x: any) => typeof x === 'string' && x.length > 0).length
+        : 0;
+      if (okCount === 0) {
+        message.error(res.msg || '没有任何文件计算成功，请检查成绩表格式');
+        return;
+      }
+
       rawData.value = data;
       resultMsg.value = res.msg || '计算完成';
-      message.success('绩点计算完成');
+
+      const errs = (res as any).errors as
+        | Array<{ fileName: string; stage: string; message: string }>
+        | undefined;
+      if (errs && errs.length > 0) {
+        errs.forEach((e) =>
+          message.warning(`${e.fileName} 在「${e.stage}」失败：${e.message}`, 8),
+        );
+        message.success(`计算完成，成功 ${okCount} 个，失败 ${errs.length} 个`);
+      } else {
+        message.success('绩点计算完成');
+      }
     } catch (e: any) {
       smartSentry.captureError(e);
       message.error(e?.response?.data?.msg || e?.response?.data?.error || e.message || '计算失败');
@@ -279,6 +300,7 @@
     if (!rawData.value) return;
     try {
       const zip = new JSZip();
+      let added = 0;
 
       // 成绩单：data[0] 中每个元素就是 base64 字符串
       filesOutList.value.forEach((item: any, idx: number) => {
@@ -287,7 +309,11 @@
           const srcFile = fileList.value[idx];
           const origName = srcFile?.name?.replace?.(/\.(xlsx|xls)$/i, '') || `成绩单_${idx + 1}`;
           const fileName = `${origName}_绩点汇总.xlsx`;
-          zip.folder('绩点汇总')!.file(fileName, base64ToUint8Array(item));
+          const bytes = base64ToUint8Array(item);
+          if (bytes.length > 0) {
+            zip.folder('绩点汇总')!.file(fileName, bytes);
+            added++;
+          }
         }
       });
 
@@ -297,13 +323,24 @@
           const srcFile = fileList.value[idx];
           const origName = srcFile?.name?.replace?.(/\.(xlsx|xls)$/i, '') || `排名表_${idx + 1}`;
           const fileName = `${origName}_专业排名.xlsx`;
-          zip.folder('专业排名')!.file(fileName, base64ToUint8Array(item));
+          const bytes = base64ToUint8Array(item);
+          if (bytes.length > 0) {
+            zip.folder('专业排名')!.file(fileName, bytes);
+            added++;
+          }
         }
       });
 
       // 挂科名单
       if (failItems.value.length > 0) {
         zip.folder('挂科名单')!.file('挂科名单.json', JSON.stringify(failItems.value, null, 2));
+        added++;
+      }
+
+      // 没有任何内容就不要生成 zip —— 空压缩包会让用户以为导出成功
+      if (added === 0) {
+        message.error('没有可下载的内容，导出已取消');
+        return;
       }
 
       const blob = await zip.generateAsync({ type: 'blob' });
